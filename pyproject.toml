@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "banana-net"
+version = "0.1.0"
+authors = [{ name="Fernando Candia", email="a20213812@pucp.edu.pe" }]
+readme = "README.md"
+description = "Audio deep learning undergraduate thesis package"
+requires-python = ">=3.11"
+
+[tool.setuptools]
+package-dir = {"" = "banana_net"}
+
+[tool.setuptools.packages.find]
+where = ["banana_net"]
+include = ["banana_net*"]
+
+[project.urls]
+"Repository" = "https://…"
