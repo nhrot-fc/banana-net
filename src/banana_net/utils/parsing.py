@@ -71,13 +71,15 @@ def load_annotation_file(file_path: str) -> pd.DataFrame:
     # Rename columns for consistency
     df.columns = [
         'begin_time', 'end_time', 'low_freq', 
-        'high_freq', 'inband_power', 'species', 
+        'high_freq', 'inband_power', 'specie', 
         'call_type'
     ]
     
     # Add the recording file name
     recording_file = os.path.basename(file_path).replace('.txt', '.wav')
     df['recording_file'] = recording_file
+    # get the directory basename for the recording file
+    df['directory'] = os.path.basename(os.path.dirname(file_path))
     
     return df
 
@@ -95,8 +97,8 @@ def clean_annotation_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     # Create a copy to avoid SettingWithCopyWarning
     df = df.copy()
     
-    # Drop rows with NaN values in 'species' or 'call_type'
-    df = df.dropna(subset=['species', 'call_type'])
+    # Drop rows with NaN values in 'specie' or 'call_type'
+    df = df.dropna(subset=['specie', 'call_type'])
     
     # Ensure numeric columns are of the correct type
     numeric_columns = ['begin_time', 'end_time', 'low_freq', 
@@ -110,8 +112,7 @@ def clean_annotation_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def normalize_labels(df: pd.DataFrame, 
-                    corrections: Optional[Dict[str, str]] = None) -> pd.DataFrame:
+def normalize_labels(df: pd.DataFrame) -> pd.DataFrame:
     """
     Normalize call_type and species labels by stripping whitespace, 
     converting to lowercase, and applying corrections.
@@ -128,41 +129,17 @@ def normalize_labels(df: pd.DataFrame,
     
     # Strip whitespace and convert to lowercase
     df['call_type'] = df['call_type'].str.strip().str.lower()
-    df['species'] = df['species'].str.strip().str.lower()
+    df['specie'] = df['specie'].str.strip().str.lower()
     
-    # Apply corrections if provided
-    if corrections:
-        df['call_type'] = df['call_type'].replace(corrections)
-        df['species'] = df['species'].replace(corrections)
+    # Apply specific corrections
+    corrections = {
+        'cs      a': 'cs',
+        'contact call': 'cc',
+        'contact syllable': 'cs',
+    }
     
-    return df
-
-
-def filter_invalid_entries(df: pd.DataFrame, 
-                          invalid_species: Optional[List[str]] = None,
-                          invalid_call_types: Optional[List[str]] = None) -> pd.DataFrame:
-    """
-    Filter out invalid species and call types.
-    
-    Args:
-        df (pd.DataFrame): DataFrame to filter
-        invalid_species (List[str], optional): List of invalid species to remove
-        invalid_call_types (List[str], optional): List of invalid call types to remove
-        
-    Returns:
-        pd.DataFrame: Filtered DataFrame
-    """
-    # Create a copy to avoid SettingWithCopyWarning
-    df = df.copy()
-    
-    if invalid_species:
-        df = df[~df['species'].isin(invalid_species)]
-    
-    if invalid_call_types:
-        df = df[~df['call_type'].isin(invalid_call_types)]
-    
-    # Reset index after filtering
-    df.reset_index(drop=True, inplace=True)
+    # Apply corrections to call_type
+    df['call_type'] = df['call_type'].replace(corrections)
     
     return df
 
@@ -224,18 +201,12 @@ def plot_call_type_distribution(df: pd.DataFrame,
 
 
 def load_and_process_annotations(directory: str,
-                                corrections: Optional[Dict[str, str]] = None,
-                                invalid_species: Optional[List[str]] = None,
-                                invalid_call_types: Optional[List[str]] = None,
                                 filter_top_n: Optional[int] = None) -> pd.DataFrame:
     """
     Complete pipeline to load and process all annotation files in a directory.
     
     Args:
         directory (str): Path to directory containing annotation files
-        corrections (Dict[str, str], optional): Label corrections to apply
-        invalid_species (List[str], optional): Invalid species to filter out
-        invalid_call_types (List[str], optional): Invalid call types to filter out
         filter_top_n (int, optional): Keep only top n most common call types
         
     Returns:
@@ -243,22 +214,6 @@ def load_and_process_annotations(directory: str,
     """
     # Get annotation files
     annotation_files = get_annotation_files(directory)
-    
-    # Default corrections for common issues
-    if corrections is None:
-        corrections = {
-            'cs      a': 'cs',
-            'contact call': 'cc',
-            'contact syllable': 'cs',
-            'l': 'lw',
-        }
-    
-    # Default invalid entries
-    if invalid_species is None:
-        invalid_species = ['as', '}']
-    
-    if invalid_call_types is None:
-        invalid_call_types = ['noise']
     
     # Process all annotation files
     dataset_list = []
@@ -282,10 +237,12 @@ def load_and_process_annotations(directory: str,
     dataset = pd.concat(dataset_list, ignore_index=True)
     
     # Normalize labels
-    dataset = normalize_labels(dataset, corrections)
+    dataset = normalize_labels(dataset)
     
-    # Filter invalid entries
-    dataset = filter_invalid_entries(dataset, invalid_species, invalid_call_types)
+    # Drop "noise" on call types or species
+    dataset = dataset[~dataset['call_type'].isin(['noise', 'unknown'])]
+    dataset = dataset[~dataset['specie'].isin(['noise', 'unknown'])]
+
     
     # Filter by most common call types if specified
     if filter_top_n:
@@ -304,12 +261,12 @@ def print_dataset_summary(df: pd.DataFrame) -> None:
     """
     print(f"Dataset shape: {df.shape}")
     print(f"Unique call types: {sorted(df['call_type'].unique())}")
-    print(f"Unique species: {sorted(df['species'].unique())}")
+    print(f"Unique species: {sorted(df['specie'].unique())}")
     print(f"Unique recording files: {len(df['recording_file'].unique())}")
     print("\nCall type distribution:")
     print(df['call_type'].value_counts())
     print("\nSpecies distribution:")
-    print(df['species'].value_counts())
+    print(df['specie'].value_counts())
 
 
 def save_processed_dataset(df: pd.DataFrame, output_path: str) -> None:
