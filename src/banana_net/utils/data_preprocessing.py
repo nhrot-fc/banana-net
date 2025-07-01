@@ -148,62 +148,6 @@ def find_potential_typos_per_species(
     return results
 
 
-def correct_species_typos(
-    df: pd.DataFrame, species_to_check: List[str]
-) -> pd.DataFrame:
-    """
-    Corrige errores tipográficos en las etiquetas de especies.
-
-    Args:
-        df: DataFrame con anotaciones
-        species_to_check: Lista de abreviaturas de especies a comprobar
-
-    Returns:
-        DataFrame con las etiquetas corregidas
-    """
-    df_corrected = df.copy()
-
-    # Obtener valores válidos de especies
-    valid_species = [s.name.lower() for s in Specie]
-
-    # Encontrar typos potenciales
-    typos = find_potential_typos_per_species(
-        df_corrected, valid_species, distance_threshold=2
-    )
-
-    logger.info("Corrigiendo errores tipográficos en etiquetas")
-
-    # Corregir typos en especies
-    if "specie" in typos and typos["specie"]:
-        logger.info("Correcciones de especies:")
-        for typo in typos["specie"]:
-            wrong = typo["wrong_value"]
-            suggested = typo["suggested_value"]
-            occurrences = typo["occurrences"]
-            
-            logger.info(f"'{wrong}' -> '{suggested}' ({occurrences} ocurrencias)")
-            df_corrected["specie"] = df_corrected["specie"].replace(wrong, suggested)
-    else:
-        logger.info("No se encontraron errores tipográficos en especies.")
-
-    # Corregir typos en tipos de llamada
-    if "call_type" in typos and typos["call_type"]:
-        logger.info("Correcciones de tipos de llamada:")
-        for typo in typos["call_type"]:
-            wrong = typo["wrong_value"]
-            suggested = typo["suggested_value"]
-            occurrences = typo["occurrences"]
-            
-            logger.info(f"'{wrong}' -> '{suggested}' ({occurrences} ocurrencias)")
-            df_corrected["call_type"] = df_corrected["call_type"].replace(
-                wrong, suggested
-            )
-    else:
-        logger.info("No se encontraron errores tipográficos en tipos de llamada.")
-
-    return df_corrected
-
-
 def filter_uncommon_combinations(
     df: pd.DataFrame,
     threshold: int = 200,

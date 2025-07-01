@@ -1,4 +1,4 @@
-.PHONY: help clean clean-pyc clean-dist run-examples lint test install dev-install
+.PHONY: help clean clean-pyc clean-dist run-examples lint test test-cov install dev-install install-dev-deps
 
 # Default target executed when no arguments are given to make.
 help:
@@ -8,7 +8,6 @@ help:
 	@echo "  make clean-dist   - Remove distribution artifacts"
 	@echo "  make run-examples - Run all example scripts"
 	@echo "  make lint         - Check code style with flake8"
-	@echo "  make test         - Run tests"
 	@echo "  make install      - Install the package"
 	@echo "  make dev-install  - Install the package in development mode"
 
@@ -51,22 +50,3 @@ lint:
 	else \
 		echo "flake8 not installed. Run: pip install flake8"; \
 	fi
-
-# Run tests
-test:
-	@echo "Running tests..."
-	@if command -v pytest >/dev/null; then \
-		pytest; \
-	else \
-		echo "pytest not installed. Run: pip install pytest"; \
-	fi
-
-# Install the package
-install:
-	@echo "Installing banana_net..."
-	@pip install .
-
-# Install in development mode
-dev-install:
-	@echo "Installing banana_net in development mode..."
-	@pip install -e .
